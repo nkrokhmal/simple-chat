@@ -1,0 +1,12 @@
+Flask
+pymongo
+WTForms
+Flask-WTF
+Flask-Bootstrap
+Flask-Login==0.5.0
+Flask-SocketIO
+Jinja2
+wheel
+flask-mongoengine
+loguru
+
