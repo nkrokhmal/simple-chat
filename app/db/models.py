@@ -1,10 +1,13 @@
 from app.imports.external import *
+from sqlalchemy.orm import backref
 
 
-class User(db.Document):
-    email = db.StringField(required=True)
-    name = db.StringField(required=True)
-    password = db.StringField()
+class User(db.Model, flask_login.UserMixin):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String, unique=True)
+    email = db.Column(db.String, unique=True)
+    password = db.Column(db.Binary)
 
     def __init__(self, **kwargs):
         for property, value in kwargs.items():
@@ -35,65 +38,94 @@ class User(db.Document):
         return pwd_hash == stored_password
 
 
-class Message(db.EmbeddedDocument):
-    time = db.DateTimeField()
-    text = db.StringField(max_length=200)
-    author = db.ReferenceField(User)
+@login_manager.user_loader
+def user_loader(id):
+    return db.session.query(User).filter_by(id=id).first()
 
 
-class EmbeddedUser(db.EmbeddedDocument):
-    email = db.StringField(required=True)
-    name = db.StringField(required=True)
+@login_manager.request_loader
+def request_loader(request):
+    username = request.form.get('username')
+    user = db.session.query(User).filter_by(username=username).first()
+    return user if user else None
+
+
+class Message(db.Model):
+    __tablename__ = "messages"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    text = db.Column(db.String)
+    time = db.Column(db.DateTime)
+
+    group_id = db.Column(db.Text(length=36), db.ForeignKey("groups.id"), nullable=True)
+    chat_id = db.Column(db.Text(length=36), db.ForeignKey("chats.id"), nullable=True)
+
+    def __init__(self, *args, **kwargs):
+        self.time = datetime.now()
+
+
+user_group = db.Table(
+    "user_group",
+    db.Column("user_id", db.Integer, db.ForeignKey("users.id"), primary_key=True),
+    db.Column("group_id", db.Text(length=36), db.ForeignKey("groups.id"), primary_key=True),
+)
+
+admin_group = db.Table(
+    "admin_group",
+    db.Column("user_id", db.Integer, db.ForeignKey("users.id"), primary_key=True),
+    db.Column("group_id", db.Text(length=36), db.ForeignKey("groups.id"), primary_key=True),
+)
+
+
+class Group(db.Model):
+    __tablename__ = "groups"
+
+    id = db.Column(db.Text(length=36), default=lambda: str(uuid.uuid4()), primary_key=True)
+    name = db.Column(db.String)
+    is_active = db.Column(db.Boolean, default=True)
+    time = db.Column(db.DateTime)
+
+    users = db.relationship("User", secondary=user_group, backref="groups", lazy='subquery',)
+    admins = db.relationship("User", secondary=admin_group, backref="admins", lazy='subquery')
+    messages = db.relationship("Message", backref=backref("group"), lazy='subquery',)
 
     @staticmethod
-    def copy_user(user):
-        return EmbeddedUser(
-            email=user.email,
-            name=user.name,
-        )
-
-
-class Room(db.Document):
-    id = db.StringField()
-    time = db.DateTimeField()
-    name = db.StringField(required=True)
-    author = db.ReferenceField(User)
-    is_active = db.BooleanField()
-    users = db.ListField(db.EmbeddedDocumentField(EmbeddedUser))
-    messages = db.ListField(db.EmbeddedDocumentField(Message))
-
-    @staticmethod
-    def create_new_room(name, user):
-        room = Room(
-            id=uuid.uuid4().hex,
+    def create_group(name, user):
+        group = Group(
             name=name,
-            is_active=True,
-            time=datetime.now(),
+            time=datetime.now()
         )
-        room.users.append(
-            EmbeddedUser.copy_user(user)
-        )
-        room.save()
+        group.users.append(user)
+        group.admins.append(user)
+        db.session.add(group)
+        db.session.commit()
+
+
+user_chat = db.Table(
+    "user_chat",
+    db.Column("user_id", db.Integer, db.ForeignKey("users.id"), primary_key=True),
+    db.Column("chat_id", db.Text(length=36), db.ForeignKey("chats.id"), primary_key=True),
+)
+
+
+class Chat(db.Model):
+    __tablename__ = "chats"
+
+    id = db.Column(db.Text(length=36), default=lambda: str(uuid.uuid4()), primary_key=True)
+    time = db.Column(db.DateTime)
+
+    users = db.relationship("User", secondary=user_chat, backref="chats", lazy='subquery',)
+    messages = db.relationship("Message", backref=backref("chat"), lazy='subquery',)
 
     @staticmethod
-    def create_personal_room(name, users):
+    def create_chat(users):
         assert len(users) == 2
 
-        # todo: think about rooms naming. Hash better?
-        room = Room(
-            id=uuid.uuid4().hex,
-            name=f"{users[0].username}_{users[1].username}",
-            is_active=True,
-            time=datetime.now(),
-        )
+        chat = Chat(time=datetime.now())
+        chat.users.append(users)
 
-        for user in users:
-            room.users.append(
-                EmbeddedUser.copy_user(user)
-            )
-        room.save()
-
-
+        db.session.add(chat)
+        db.session.commit()
 
 
 

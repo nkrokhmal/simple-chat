@@ -19,27 +19,22 @@
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav">
                     <li><a href="{{ url_for('main.index') }}">Home</a></li>
-                    <li><a href="{{ url_for('main.index') }}">Explore</a></li>
+                    <li><a href="{{ url_for('main.rooms', page=1) }}">Rooms</a></li>
                 </ul>
                 <ul class="nav navbar-nav navbar-right">
-                    {% if current_user.is_anonymous %}
-                    <li><a href="{{ url_for('auth.login') }}">Login</a></li>
+                    {% if not current_user.is_authenticated %}
+                        <li><a href="{{ url_for('auth.login') }}">Login</a></li>
                     {% else %}
-                    <li>
-                        <a href="{{ url_for('main.index') }}">Messages
-                            {% set new_messages = current_user.new_messages() %}
-                            <span id="message_count" class="badge"
-                                  style="visibility: {% if new_messages %}visible
-                                                     {% else %}hidden{% endif %};">
-                                {{ new_messages }}
-                            </span>
-                        </a>
-                    </li>
-                    <li><a href="{{ url_for('main.index', username=current_user.username) }}">Profile</a></li>
-                    <li><a href="{{ url_for('auth.logout') }}">Logout</a></li>
+                        <li><a href="{{ url_for('auth.logout') }}">Logout</a></li>
                     {% endif %}
                 </ul>
             </div>
         </div>
     </nav>
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+        {% block app_content %} {% endblock %}
+    </div>
 {% endblock %}

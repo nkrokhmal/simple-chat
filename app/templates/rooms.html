@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block app_content %}
+    <h1>Rooms </h1>
+
+    <div class="btn-toolbar dropdown">
+         <a href="{{url_for('main.create_group')}}" class="btn btn-primary btn-sm mr-2 dropdown-toggle">
+            <span class="fas fa-plus mr-2"></span>Create new room
+        </a>
+    </div>
+
+    <div class="btn-toolbar dropdown">
+         <a href="{{url_for('main.create_chat')}}" class="btn btn-primary btn-sm mr-2 dropdown-toggle">
+            <span class="fas fa-plus mr-2"></span>Create new chat
+        </a>
+    </div>
+
+    <table class="table table-centered table-nowrap mb-0 rounded">
+        <thead class="thead-light">
+            <tr>
+                <th class="border-0">#</th>
+                <th class="border-0">Room name</th>
+                <th class="border-0">Last message</th>
+                <th class="border-0">Go to room</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for room in rooms.items %}
+                <tr>
+                    <td class="border-0">{{loop.index + (page - 1) * per_page}}</td>
+                    <td class="border-0"><a class="small">{{room.name}}</a></td>
+                    <td class="border-0"><a class="small"></a></td>
+                    <td class="border-0"><a class="small"></a></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="card-footer px-3 border-0 d-flex align-items-center justify-content-between">
+        <nav aria-label="Page navigation example">
+            <ul class="pagination mb-0">
+                {% if rooms.has_prev %}
+                  <li class="page-item"> <a class="page-link" href="{{ url_for('main.rooms', page=rooms.prev_num) }}">Предыдущие</a></li>
+                {% else %}
+                  <li class="page-item"><a class="page-link btn disabled" href="#">Предыдущие</a></li>
+                {% endif %}
+                {% if rooms.has_next %}
+                  <li class="page-item"> <a class="page-link" href="{{ url_for('main.rooms', page=rooms.next_num) }}">Следующие</a></li>
+                {% else %}
+                  <li class="page-item"><a class="page-link btn disabled" href="#">Следующие</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+
+{% endblock %}
